@@ -1,648 +1,291 @@
-Decentralized Game Marketplace on Stellar
+# Stellar Game Marketplace
 
-A decentralized gaming asset marketplace built on the Stellar network using Soroban smart contracts, Stellar’s native SDEX orderbook, and atomic swap settlement for fraud-free peer-to-peer trading.
+> A fully decentralized gaming asset marketplace built on Stellar using Soroban smart contracts — enabling fraud-free, peer-to-peer trading of NFTs, in-game items, and currencies without centralized custody.
 
-The platform allows players to trade:
+---
 
-NFT game items
-Skins
-Weapons
-Land assets
-In-game currencies
-Tournament tickets
-Collectible cards
-Soulbound achievements
+## Overview
 
-without centralized custody.
+Traditional game marketplaces (Steam, Epic, Roblox) are centralized, custodial, and prone to fake trades, chargebacks, item duplication, and high fees. This platform eliminates those problems by combining:
 
-The system combines:
+- **Stellar SDEX** — native decentralized orderbooks and path payments
+- **Soroban Smart Contracts** — NFT logic, escrow, royalties, auctions, atomic swaps
+- **Atomic Settlement** — either both assets exchange, or nothing happens
 
-Stellar SDEX orderbooks
-Soroban smart contracts
-Atomic swap contracts
-NFT ownership verification
-Escrow settlement
-Multi-game interoperability
-Core Idea
+Players retain true ownership of their assets. No intermediaries. No fraud.
 
-Traditional game marketplaces are centralized:
+---
 
-Steam Market
-Epic Marketplace
-Roblox economy
+## Tradeable Asset Types
 
-Problems:
+| Asset | Type |
+|---|---|
+| Rare Sword, Legendary Skin | NFT |
+| Land Plot, Collectible Card | NFT |
+| Clan Badge, Achievement | Soulbound NFT |
+| In-game Currency | Fungible Token |
+| Tournament Ticket | NFT |
 
-Fake trades
-Chargebacks
-Item duplication
-Custodial risk
-High fees
-No true ownership
+---
 
-Your marketplace solves this using:
+## Architecture
 
-on-chain asset ownership
-atomic swaps
-decentralized escrow
-transparent orderbooks
-instant settlement
-Why Stellar is Perfect
-1. Native SDEX
+```
+┌─────────────────────────────┐
+│        Frontend UI          │
+│     React / Next.js         │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│      Backend API Layer      │
+│   Node.js / NestJS          │
+│   Marketplace Indexer       │
+└──────┬──────────────┬───────┘
+       ▼              ▼
+┌─────────────┐ ┌─────────────┐
+│ Soroban NFT │ │ Atomic Swap │
+│  Contracts  │ │  Contracts  │
+└──────┬──────┘ └──────┬──────┘
+       └──────┬─────────┘
+              ▼
+┌─────────────────────────────┐
+│    Stellar Ledger + SDEX    │
+└─────────────────────────────┘
+```
 
-Stellar already has:
+---
 
-decentralized orderbooks
-offer matching
-path payments
-liquidity routing
+## Core Features
 
-This reduces infrastructure complexity.
+### 1. NFT Game Asset System
+Every in-game item is minted as an on-chain NFT with IPFS-hosted metadata.
 
-2. Soroban Smart Contracts
+```json
+{
+  "name": "Dragon Slayer Sword",
+  "description": "Legendary weapon from the Abyss Realm",
+  "image": "ipfs://Qm...",
+  "attributes": [
+    { "trait_type": "Damage", "value": 95 },
+    { "trait_type": "Rarity", "value": "Legendary" }
+  ]
+}
+```
 
-Use Soroban for:
+### 2. Decentralized Orderbook
+Listings are stored on Stellar SDEX or a custom Soroban orderbook. Players create buy/sell orders, bids, and auctions.
 
-NFT logic
-escrow
-royalties
-auctions
-atomic swaps
-marketplace fees
-anti-fraud rules
-
-Soroban is optimized for scalable smart contracts with Rust/WASM.
-
-3. Atomic Swaps
-
-Atomic swaps ensure:
-
-either both assets exchange
-or nothing happens
-
-No scams.
-
-Example:
-
-Player A sends rare sword NFT
-Player B sends 500 XLM
-contract settles both simultaneously
-
-Stellar already provides atomic swap examples for Soroban.
-
-Marketplace Architecture
-┌────────────────────────────┐
-│       Frontend UI          │
-│ React / Next.js            │
-└────────────┬───────────────┘
-             │
-             ▼
-┌────────────────────────────┐
-│     Backend API Layer      │
-│ Node.js / NestJS           │
-│ Marketplace Indexer        │
-└────────────┬───────────────┘
-             │
-      ┌──────┴─────────┐
-      ▼                ▼
-┌──────────────┐ ┌──────────────┐
-│ Soroban NFT  │ │ Atomic Swap  │
-│ Contracts    │ │ Contracts    │
-└──────┬───────┘ └──────┬───────┘
-       ▼                ▼
-┌────────────────────────────┐
-│ Stellar Ledger + SDEX      │
-└────────────────────────────┘
-Major Features
-1. NFT Game Asset System
-
-Every game item becomes an NFT.
-
-Example Assets
-Asset	Type
-Rare Sword	NFT
-Legendary Skin	NFT
-Game Currency	Fungible Token
-Land Plot	NFT
-Clan Badge	Soulbound NFT
-2. Decentralized Orderbook
-
-Players create:
-
-BUY orders
-SELL orders
-Bids
-Auctions
-
-Stored:
-
-on Stellar SDEX
-or custom Soroban orderbook
-Example
+```json
 {
   "seller": "GABC...",
   "asset_id": "dragon_sword_77",
   "price": "250 XLM",
   "expires": 1728820000
 }
-3. Atomic Swap Settlement
+```
 
-Critical anti-scam mechanism.
+### 3. Atomic Swap Settlement
+The core anti-scam mechanism. Both assets lock simultaneously — if any step fails, everything is refunded.
 
-Workflow
-Step 1
+```
+Buyer locks 500 XLM  →  Contract verifies ownership & signatures
+Seller locks NFT     →  Assets exchange simultaneously
+                     →  Failure? Full refund to both parties
+```
 
-Buyer locks payment.
+```rust
+pub fn swap(buyer: Address, seller: Address, nft: Address, payment: i128)
+// verifies signatures → verifies NFT ownership → locks assets → executes transfers
+```
 
-Step 2
+### 4. Royalty Engine
+Creators earn automatically on every resale.
 
-Seller locks NFT.
+```
+NFT resold for 100 XLM  →  5 XLM to creator  →  95 XLM to seller
+```
 
-Step 3
+### 5. Escrow System
+High-value trades are held in escrow until both parties confirm. Auto-refunds on expiration.
 
-Contract verifies:
+### 6. Cross-Game Asset Compatibility
+A single wallet holds assets from multiple games via a universal gamer identity. Games integrate via the provided SDK.
 
-ownership
-authenticity
-signatures
-expiration
-Step 4
+### 7. Anti-Fraud System
+- Ownership verification before listing
+- Unique token IDs prevent duplication
+- Wash trading and bot detection
+- Wallet reputation scores
 
-Assets exchange simultaneously.
+### 8. Liquidity Pools
+Stellar AMMs and Soroswap pools enable instant game token conversion and liquidity incentives.
 
-If anything fails:
+---
 
-all assets refunded.
-4. Cross-Game Asset Compatibility
+## Smart Contract Modules
 
-Games integrate SDK.
-
-One wallet can hold:
-
-assets from multiple games
-universal gamer identity
-
-Example:
-
-Wallet:
-- Cyber Sword
-- Racing NFT Car
-- Arena Coins
-- Tournament Trophy
-5. Liquidity Pools for Game Tokens
-
-Use:
-
-Stellar AMMs
-Soroswap pools
-SDEX market-making
-
-For:
-
-instant game token conversion
-liquidity incentives
-
-6. Royalty Engine
-
-Creators earn royalties automatically.
-
-Example:
-
-NFT resold for 100 XLM
-5% sent to creator
-95% to seller
-7. Anti-Fraud System
-Checks
-Ownership Verification
-
-Validate NFT ownership before listing.
-
-Duplicate Prevention
-
-Unique token IDs.
-
-Suspicious Activity Detection
-
-Flag:
-
-wash trading
-fake volume
-bot manipulation
-Reputation Scores
-
-Wallet trust system.
-
-8. Escrow System
-
-High-value trades use escrow.
-
-Example
-Buyer deposits:
-1000 XLM
-
-Seller deposits:
-Rare NFT
-
-Escrow releases after verification.
-Smart Contract Architecture
-Contract Modules
+```
 contracts/
-│
-├── marketplace/
-├── nft/
-├── atomic_swap/
-├── escrow/
-├── auctions/
-├── royalties/
-├── governance/
-└── rewards/
-Detailed Project Structure
+├── nft-contract/          # Minting, transfer, metadata, storage
+├── marketplace-contract/  # Listings, bids, sales, fees
+├── atomic-swap-contract/  # Swap logic, validation, escrow
+├── royalty-contract/      # Royalty distribution
+├── auctions/              # Auction engine
+├── governance/            # DAO voting
+└── rewards/               # Staking and incentives
+```
+
+---
+
+## Project Structure
+
+```
 stellar-game-marketplace/
-│
 ├── contracts/
-│   ├── nft-contract/
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── mint.rs
-│   │   │   ├── transfer.rs
-│   │   │   ├── metadata.rs
-│   │   │   └── storage.rs
-│   │   ├── Cargo.toml
-│   │   └── Makefile
-│   │
-│   ├── marketplace-contract/
-│   │   ├── src/
-│   │   │   ├── listings.rs
-│   │   │   ├── bids.rs
-│   │   │   ├── sales.rs
-│   │   │   ├── fees.rs
-│   │   │   └── lib.rs
-│   │
-│   ├── atomic-swap-contract/
-│   │   ├── src/
-│   │   │   ├── swap.rs
-│   │   │   ├── validation.rs
-│   │   │   ├── escrow.rs
-│   │   │   └── lib.rs
-│   │
+│   ├── nft-contract/src/         # lib.rs, mint.rs, transfer.rs, metadata.rs
+│   ├── marketplace-contract/src/ # listings.rs, bids.rs, sales.rs, fees.rs
+│   ├── atomic-swap-contract/src/ # swap.rs, validation.rs, escrow.rs
 │   └── royalty-contract/
-│
 ├── frontend/
-│   ├── app/
-│   ├── components/
-│   ├── hooks/
-│   ├── services/
-│   ├── wallet/
-│   ├── marketplace/
-│   ├── nft/
-│   └── pages/
-│
-├── backend/
-│   ├── src/
-│   │   ├── indexer/
-│   │   ├── websocket/
-│   │   ├── marketplace/
-│   │   ├── auth/
-│   │   ├── analytics/
-│   │   └── database/
-│
+│   ├── app/, components/, hooks/, services/
+│   └── pages/                    # marketplace, inventory, auctions, profile
+├── backend/src/
+│   ├── indexer/, auth/, analytics/
+│   └── fraud-detection/
 ├── sdk/
 │   ├── js-sdk/
 │   └── unity-sdk/
-│
-├── subgraph/
 ├── scripts/
 ├── docs/
 └── docker/
-Tech Stack
-Layer	Technology
-Blockchain	Stellar
-Smart Contracts	Soroban
-Language	Rust
-Frontend	Next.js
-Wallet	Freighter
-Backend	NestJS
-Indexing	SubQuery
-Database	PostgreSQL
-Storage	IPFS
-Realtime	WebSockets
-NFT Metadata	JSON/IPFS
-NFT Metadata Example
-{
-  "name": "Dragon Slayer Sword",
-  "description": "Legendary weapon",
-  "image": "ipfs://Qm...",
-  "attributes": [
-    {
-      "trait_type": "Damage",
-      "value": 95
-    },
-    {
-      "trait_type": "Rarity",
-      "value": "Legendary"
-    }
-  ]
-}
-How Atomic Swaps Work on Stellar
-
-Stellar provides Soroban atomic swap examples already.
-
-Simplified Flow
-pub fn swap(
-    buyer: Address,
-    seller: Address,
-    nft: Address,
-    payment: i128
-)
-
-Contract:
-
-verifies signatures
-verifies NFT ownership
-locks assets
-executes both transfers
-refunds on failure
-Marketplace Flow
-Sell Asset
-1. Player connects wallet
-2. Selects NFT
-3. Sets price
-4. Signs transaction
-5. Listing stored on-chain
-Buy Asset
-1. Buyer selects listing
-2. Funds locked
-3. Atomic swap executed
-4. NFT transferred
-5. Payment released
-Revenue Model
-Marketplace Fees
-1%–2% per trade
-Premium Listings
+```
 
-Featured assets.
+---
 
-Launchpad Fees
+## Tech Stack
 
-New game asset launches.
+| Layer | Technology |
+|---|---|
+| Blockchain | Stellar |
+| Smart Contracts | Soroban (Rust/WASM) |
+| Frontend | Next.js + Freighter Wallet |
+| Backend | NestJS |
+| Indexing | SubQuery |
+| Database | PostgreSQL |
+| Storage | IPFS |
+| Realtime | WebSockets |
 
-Creator Royalties
+---
 
-Revenue sharing.
+## Marketplace Flows
 
-Tournament Integration
+**Selling an Asset**
+```
+Connect wallet → Select NFT → Set price → Sign transaction → Listing stored on-chain
+```
 
-Entry fee commissions.
+**Buying an Asset**
+```
+Select listing → Lock funds → Atomic swap executes → NFT transferred → Payment released
+```
 
-Tokenomics
+**User Journey**
+```
+Sign in → Connect Freighter → Mint NFT → List for 200 XLM
+       → Buyer purchases → Atomic swap → Ownership transferred → Seller receives XLM
+```
 
-You can create:
+---
 
-Utility Token
+## Revenue Model
 
-Purpose:
+| Source | Detail |
+|---|---|
+| Marketplace Fees | 1–2% per trade |
+| Premium Listings | Featured asset placement |
+| Launchpad Fees | New game asset launches |
+| Creator Royalties | Revenue sharing |
+| Tournament Commissions | Entry fee percentage |
 
-governance
-fee discounts
-staking
-rewards
+---
 
-Example:
+## Security Model
 
-Token: GAMEX
-Supply: 1 Billion
-Governance DAO
+| Concern | Mitigation |
+|---|---|
+| Reentrancy | Rust memory safety + state guards |
+| Unauthorized swaps | Signature verification |
+| Stuck funds | Escrow expiration + auto-refund |
+| Spam | Rate limiting |
+| Treasury risk | Multi-sig |
 
-Community controls:
+---
 
-fee structure
-supported games
-moderation
-treasury spending
+## Storage Strategy
 
-Use Soroban governance contracts.
+- **On-chain:** ownership records, listings, trade history, balances
+- **Off-chain (IPFS):** images, metadata, videos, large assets
 
-Security Model
-Important Protections
-Reentrancy Prevention
+---
 
-Rust safety + state guards.
+## Development Phases
 
-Escrow Expiration
+| Phase | Milestone |
+|---|---|
+| **1 — MVP** | Wallet login, NFT minting, listings, atomic swap |
+| **2 — Marketplace** | Auctions, royalties, game SDK, analytics |
+| **3 — Liquidity** | AMMs, staking, rewards, yield farming |
+| **4 — Ecosystem** | Cross-chain bridges, DAO governance, launchpad, tournaments |
 
-Auto-refunds.
+**Estimated Timeline:** 6 months to audit-ready launch (1 month per phase + audit)
 
-Signature Verification
+---
 
-Prevent unauthorized swaps.
+## Advanced Features (Post-MVP)
 
-Rate Limiting
+- **Rental Marketplace** — time-limited asset rentals
+- **NFT Lending** — use NFTs as collateral
+- **Guild Treasury** — clan-managed pooled assets
+- **AI Fraud Detection** — suspicious pricing, wash trading, bot detection
+- **Cross-Chain Bridges** — import Ethereum, Solana, and Polygon assets into Stellar
 
-Prevent spam.
+---
 
-Multi-Sig Treasury
+## Why Stellar
 
-Protect platform funds.
+| Feature | Benefit |
+|---|---|
+| SDEX | Built-in decentralized orderbooks — less infrastructure |
+| Soroban | Scalable Rust/WASM smart contracts |
+| Atomic Swaps | Native fraud-free settlement |
+| Path Payments | Multi-asset routing |
+| Low Fees | Microtransactions viable |
+| Fast Settlement | ~5 second finality |
 
-Storage Strategy
-On-chain
+---
 
-Store:
+## Key Challenges & Solutions
 
-ownership
-listings
-trades
-balances
-Off-chain/IPFS
+| Challenge | Solution |
+|---|---|
+| Fake assets | Verified collections |
+| Wash trading | AI detection |
+| Metadata hosting | IPFS |
+| Liquidity | SDEX + AMMs |
+| Scalability | Stellar low fees + Soroban parallelization |
 
-Store:
+---
 
-images
-metadata
-videos
-large assets
-Scalability
-Why Stellar Helps
-Low Fees
+## Resources
 
-Microtransactions possible.
+- [Stellar Developer Docs](https://developers.stellar.org)
+- [Soroban Examples Repository](https://github.com/stellar/soroban-examples)
+- [Soroban React Atomic Swap Demo](https://github.com/stellar/soroban-react-atomic-swap)
+- [Soroswap Docs](https://docs.soroswap.finance)
 
-Fast Settlement
+---
 
-~5 seconds.
+## Vision
 
-Built-in DEX
-
-Less infrastructure.
-
-Soroban Parallelization
-
-Better scaling.
-
-Advanced Features
-1. Rental Marketplace
-
-Rent gaming assets temporarily.
-
-Example:
-
-Rent sword for 3 days
-2. NFT Lending
-
-Use NFTs as collateral.
-
-3. Guild Treasury
-
-Gaming clans manage pooled assets.
-
-4. AI Fraud Detection
-
-Detect:
-
-suspicious pricing
-wash trading
-bot trades
-5. Cross-Chain Support
-
-Bridge:
-
-Ethereum NFTs
-Solana assets
-Polygon gaming assets
-
-into Stellar.
-
-Recommended Development Phases
-Phase 1 — MVP
-
-Build:
-
-wallet login
-NFT minting
-listings
-buying
-atomic swap
-Phase 2 — Advanced Marketplace
-
-Add:
-
-auctions
-royalties
-game SDK
-analytics
-Phase 3 — Liquidity Layer
-
-Add:
-
-AMMs
-staking
-rewards
-yield farming
-Phase 4 — Ecosystem Expansion
-
-Add:
-
-cross-chain bridges
-DAO governance
-launchpad
-tournaments
-Backend Architecture
-Services
-Backend
-│
-├── Auth Service
-├── NFT Service
-├── Marketplace Service
-├── Swap Service
-├── Notification Service
-├── Analytics Service
-├── Indexer Service
-└── Fraud Detection Engine
-Frontend Pages
-/pages
-│
-├── index.tsx
-├── marketplace.tsx
-├── nft/[id].tsx
-├── inventory.tsx
-├── auctions.tsx
-├── wallet.tsx
-├── profile.tsx
-└── admin.tsx
-Recommended SDKs
-Stellar SDK
-
-Use for:
-
-transactions
-wallet interaction
-signatures
-Soroban SDK
-
-Use for:
-
-contract development
-token interfaces
-storage
-Dev Tools
-Tool	Purpose
-Rust	Smart contracts
-Stellar CLI	Deployment
-Freighter	Wallet
-Docker	Local dev
-IPFS	Metadata
-SubQuery	Indexing
-Example User Journey
-Player signs in
-      ↓
-Connects Freighter wallet
-      ↓
-Mints rare item NFT
-      ↓
-Lists item for 200 XLM
-      ↓
-Buyer purchases
-      ↓
-Atomic swap executes
-      ↓
-NFT ownership transferred
-      ↓
-Seller receives XLM
-Challenges
-Challenge	Solution
-Fake assets	Verified collections
-Wash trading	AI detection
-Scalability	Stellar low fees
-Metadata hosting	IPFS
-Liquidity	SDEX + AMMs
-Fraud	Atomic swaps
-Best Stellar Features to Use
-Feature	Usage
-SDEX	Orderbooks
-Soroban	Smart contracts
-Path Payments	Multi-asset routing
-AMMs	Liquidity
-Atomic Swaps	Fraud-free trades
-Trustlines	Asset permissions
-Useful Resources
-Stellar Developer Docs
-Soroban Examples Repository
-Soroban React Atomic Swap Demo
-Soroswap Docs
-Recommended MVP Timeline
-Month	Goal
-1	Smart contract setup
-2	NFT marketplace
-3	Atomic swap engine
-4	Frontend integration
-5	SDEX integration
-6	Security audit + launch
-Final Vision
-
-This project becomes:
-
-Steam Market + OpenSea + GameFi DEX
-fully decentralized
-fraud-resistant
-interoperable
-scalable
+> **Steam Market + OpenSea + GameFi DEX** — fully decentralized, fraud-resistant, cross-game interoperable, and scalable on Stellar.
